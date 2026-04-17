@@ -109,7 +109,7 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email);
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({
