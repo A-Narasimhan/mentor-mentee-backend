@@ -1,18 +1,86 @@
-// POST /api/auth/reset-password
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const crypto = require("crypto");
+
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+/* REGISTER */
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    const exists = await User.findOne({ email });
+    if (exists)
+      return res.status(400).json({ message: "Email already registered" });
+
+    const user = await User.create({ name, email, password });
+
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* LOGIN */
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user || !(await user.comparePassword(password)))
+      return res.status(401).json({ message: "Invalid credentials" });
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* FORGOT PASSWORD */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const hashedCode = crypto
+      .createHash("sha256")
+      .update(resetCode)
+      .digest("hex");
+
+    user.resetPasswordToken = hashedCode;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+
+    await user.save();
+
+    res.json({ resetCode });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* RESET PASSWORD */
 router.post("/reset-password", async (req, res) => {
   try {
     const { email, resetCode, newPassword } = req.body;
-
-    if (!email || !resetCode || !newPassword)
-      return res.status(400).json({ message: "All fields are required" });
-
-    if (newPassword.length < 6)
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
 
     const hashedCode = crypto
       .createHash("sha256")
@@ -26,9 +94,9 @@ router.post("/reset-password", async (req, res) => {
     });
 
     if (!user)
-      return res.status(400).json({ message: "Invalid or expired reset code" });
+      return res.status(400).json({ message: "Invalid or expired code" });
 
-    // ✅ FIXED HERE
+    // ✅ Correct
     user.password = newPassword;
 
     user.resetPasswordToken = null;
@@ -36,9 +104,10 @@ router.post("/reset-password", async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Password reset successful. Please login." });
+    res.json({ message: "Password reset successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
 module.exports = router;
