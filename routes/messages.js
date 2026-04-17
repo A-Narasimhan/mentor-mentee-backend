@@ -51,7 +51,7 @@ router.post("/upload", protect, upload.single("file"), async (req, res) => {
       return res.status(400).json({ message: "receiverId and file required" });
 
     const isImage = req.file.mimetype.startsWith("image/");
-    const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    const fileUrl = `https://mentor-backend-8zgn.onrender.com/uploads/${req.file.filename}`;
     const fileSizeKB = (req.file.size / 1024).toFixed(1) + " KB";
 
     const message = await Message.create({

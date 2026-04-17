@@ -5,27 +5,71 @@ const User = require("../models/User");
 const crypto = require("crypto");
 
 const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 
 /* REGISTER */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      roles,
+      bio,
+      domain,
+      experienceLevel,
+      skills,
+      interests,
+    } = req.body;
+
+    // Debug (remove later if needed)
+    console.log("REGISTER DATA:", req.body);
 
     const exists = await User.findOne({ email });
-    if (exists)
-      return res.status(400).json({ message: "Email already registered" });
 
-    const user = await User.create({ name, email, password });
+    if (exists) {
+      return res.status(400).json({
+        message: "Email already registered",
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+
+      // ✅ IMPORTANT FIX
+      role: role || "mentee",
+      roles:
+        roles && roles.length > 0
+          ? roles
+          : role === "both"
+          ? ["mentor", "mentee"]
+          : [role || "mentee"],
+
+      bio: bio || "",
+      domain: domain || "",
+      experienceLevel: experienceLevel || "beginner",
+      skills: skills || [],
+      interests: interests || [],
+    });
 
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      roles: user.roles,
       token: generateToken(user._id),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("REGISTER ERROR:", err);
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
@@ -36,17 +80,24 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user || !(await user.comparePassword(password)))
-      return res.status(401).json({ message: "Invalid credentials" });
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
 
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      roles: user.roles,
       token: generateToken(user._id),
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
@@ -56,10 +107,16 @@ router.post("/forgot-password", async (req, res) => {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
 
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const resetCode = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
 
     const hashedCode = crypto
       .createHash("sha256")
@@ -73,7 +130,9 @@ router.post("/forgot-password", async (req, res) => {
 
     res.json({ resetCode });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
@@ -93,20 +152,25 @@ router.post("/reset-password", async (req, res) => {
       resetPasswordExpires: { $gt: new Date() },
     });
 
-    if (!user)
-      return res.status(400).json({ message: "Invalid or expired code" });
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid or expired code",
+      });
+    }
 
-    // ✅ Correct
     user.password = newPassword;
-
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
 
     await user.save();
 
-    res.json({ message: "Password reset successful" });
+    res.json({
+      message: "Password reset successful",
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
