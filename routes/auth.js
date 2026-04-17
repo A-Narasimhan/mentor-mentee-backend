@@ -9,7 +9,10 @@ const generateToken = (id) =>
     expiresIn: "7d",
   });
 
-/* REGISTER */
+/* =========================
+   REGISTER
+========================= */
+
 router.post("/register", async (req, res) => {
   try {
     const {
@@ -17,16 +20,12 @@ router.post("/register", async (req, res) => {
       email,
       password,
       role,
-      roles,
       bio,
       domain,
       experienceLevel,
       skills,
       interests,
     } = req.body;
-
-    // Debug (remove later if needed)
-    console.log("REGISTER DATA:", req.body);
 
     const exists = await User.findOne({ email });
 
@@ -40,21 +39,12 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password,
-
-      // ✅ IMPORTANT FIX
-      role: role || "mentee",
-      roles:
-        roles && roles.length > 0
-          ? roles
-          : role === "both"
-          ? ["mentor", "mentee"]
-          : [role || "mentee"],
-
-      bio: bio || "",
-      domain: domain || "",
-      experienceLevel: experienceLevel || "beginner",
-      skills: skills || [],
-      interests: interests || [],
+      role,
+      bio,
+      domain,
+      experienceLevel,
+      skills,
+      interests,
     });
 
     res.status(201).json({
@@ -62,18 +52,24 @@ router.post("/register", async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles,
+      bio: user.bio,
+      domain: user.domain,
+      experienceLevel: user.experienceLevel,
+      skills: user.skills,
+      interests: user.interests,
       token: generateToken(user._id),
     });
   } catch (err) {
-    console.error("REGISTER ERROR:", err);
     res.status(500).json({
       message: err.message,
     });
   }
 });
 
-/* LOGIN */
+/* =========================
+   LOGIN
+========================= */
+
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -91,7 +87,11 @@ router.post("/login", async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      roles: user.roles,
+      bio: user.bio,
+      domain: user.domain,
+      experienceLevel: user.experienceLevel,
+      skills: user.skills,
+      interests: user.interests,
       token: generateToken(user._id),
     });
   } catch (err) {
@@ -101,12 +101,15 @@ router.post("/login", async (req, res) => {
   }
 });
 
-/* FORGOT PASSWORD */
+/* =========================
+   FORGOT PASSWORD
+========================= */
+
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email);
 
     if (!user) {
       return res.status(404).json({
@@ -124,7 +127,8 @@ router.post("/forgot-password", async (req, res) => {
       .digest("hex");
 
     user.resetPasswordToken = hashedCode;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    user.resetPasswordExpires =
+      Date.now() + 15 * 60 * 1000;
 
     await user.save();
 
@@ -136,10 +140,17 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-/* RESET PASSWORD */
+/* =========================
+   RESET PASSWORD
+========================= */
+
 router.post("/reset-password", async (req, res) => {
   try {
-    const { email, resetCode, newPassword } = req.body;
+    const {
+      email,
+      resetCode,
+      newPassword,
+    } = req.body;
 
     const hashedCode = crypto
       .createHash("sha256")
@@ -149,7 +160,9 @@ router.post("/reset-password", async (req, res) => {
     const user = await User.findOne({
       email,
       resetPasswordToken: hashedCode,
-      resetPasswordExpires: { $gt: new Date() },
+      resetPasswordExpires: {
+        $gt: new Date(),
+      },
     });
 
     if (!user) {
