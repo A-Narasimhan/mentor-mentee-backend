@@ -40,11 +40,10 @@ router.put("/me", protect, async (req, res) => {
     }
 
     // Safe field updates
-    user.name = req.body.name || user.name;
-    user.bio = req.body.bio || user.bio;
-    user.domain = req.body.domain || user.domain;
-    user.experienceLevel =
-      req.body.experienceLevel || user.experienceLevel;
+    if (req.body.name !== undefined)            user.name            = req.body.name;
+    if (req.body.bio !== undefined)             user.bio             = req.body.bio;
+    if (req.body.domain !== undefined)          user.domain          = req.body.domain;
+    if (req.body.experienceLevel !== undefined) user.experienceLevel = req.body.experienceLevel;
 
     // Safe array handling
     user.skills = Array.isArray(req.body.skills)
@@ -105,8 +104,10 @@ router.get("/mentors", protect, async (req, res) => {
       $or: [
         { role: "mentor" },
         { role: "both" },
-        { roles: "mentor" },
+        { roles: { $in: ["mentor"] } },
       ],
+      availableForMentoring: true,
+      _id: { $ne: req.user._id },
     };
 
     if (skill) {
